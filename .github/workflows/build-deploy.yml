@@ -3,7 +3,7 @@ on:
 # 手動実行用トリガー
   workflow_dispatch:  
 # Add env
-  env:
+env:
   CONTAINER_REGISTRY: handson01repofukufuku.azurecr.io  # Azure Container Registry のドメイン (~.azurecr.io) をこちらに設定
 jobs:
   build:
