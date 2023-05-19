@@ -49,7 +49,6 @@ jobs:
   # Add a id-token permission
     permissions:
       id-token: write
-  
     steps:
       - name: Set repository name to env
         run: | 
