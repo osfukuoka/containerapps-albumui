@@ -1,14 +1,14 @@
 name: Trigger auto deployment
 on:
 # 手動実行用トリガー
-  workflow_dispatch:  
+  workflow_dispatch:
 # Add env
 env:
-  CONTAINER_REGISTRY: nelco46494kadcdsuqzuss.azurecr.io  # Azure Container Registry のドメイン (~.azurecr.io) をこちらに設定
+  CONTAINER_REGISTRY: nelco46494kadcdsuqzuss.azurecr.io  # Azure Container Registry のドメイン (~.azurecr.io) をこちらに設定      
+    # Add envs
   RESOURCE_GROUP_NAME: fukuoka-cicd # 準備タスクで作成されたリソースグループ名をここに記載
-  CONTAINERAPP_NAME: ctapp-demo-ui # 準備タスクで作成された API Container App 名 `ctapp-demo-api` をここに記載
+  CONTAINERAPP_NAME: ctapp-demo-api  # 準備タスクで作成された API Container App 名 `ctapp-demo-api` をここに記載
   API_BASE_URL: https://ctapp-demo-ui.wittysea-ef8aed64.koreacentral.azurecontainerapps.io
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -34,7 +34,7 @@ jobs:
           registry: ${{ env.CONTAINER_REGISTRY }}
           username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
           password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-      # Add a step
+        # Add a step
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
         with:
@@ -42,18 +42,58 @@ jobs:
           tags: ${{ env.CONTAINER_REGISTRY }}/${{ env.REPOSITORY_NAME }}:${{ github.sha }}
           file: ./Dockerfile
           context: ./
-            # Add a job and steps
+  # Add a job and steps
   deploy:
     runs-on: ubuntu-22.04
     needs: build
-       # Add a id-token permission
+  # Add a id-token permission
     permissions:
       id-token: write
   
+    steps:
+      - name: Set repository name to env
+        run: | 
+          echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}" >> $GITHUB_ENV
+
+      - name: Confirm if env have REPOSITORY_NAME
+        run: |
+          echo ${{ env.REPOSITORY_NAME }}
       # Add a step
-      - name: Deploy to containerapp
-        uses: azure/CLI@v1
+      - name: Azure Login using OIDC
+        uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+     # Add a step
+      - name: Deploy to containerapp
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az extension add --upgrade --name containerapp
+
+            az containerapp registry set \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --server ${{ env.CONTAINER_REGISTRY }} \
+              --username  ${{ secrets.CONTAINER_REGISTRY_USERNAME }} \
+              --password ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
+            az containerapp ingress enable \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --target-port 3500 \
+              --type external
+
+            container_name=$( \
+              az containerapp show \
+                --name ${{ env.CONTAINERAPP_NAME }} \
+                --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+                --query "properties.template.containers[0].name" \
+                --output tsv
+            )
+            az containerapp update \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+              --container-name $container_name \
+              --image ${{ env.CONTAINER_REGISTRY }}/${{ env.REPOSITORY_NAME }}:${{ github.sha }}
