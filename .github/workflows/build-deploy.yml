@@ -5,10 +5,9 @@ on:
 # Add env
 env:
   CONTAINER_REGISTRY: nelco46494kadcdsuqzuss.azurecr.io  # Azure Container Registry のドメイン (~.azurecr.io) をこちらに設定
-  # Add envs
   RESOURCE_GROUP_NAME: fukuoka-cicd # 準備タスクで作成されたリソースグループ名をここに記載
- CONTAINERAPP_NAME: ctapp-demo-ui # 準備タスクで作成された API Container App 名 `ctapp-demo-api` をここに記載
- API_BASE_URL: https://ctapp-demo-ui.wittysea-ef8aed64.koreacentral.azurecontainerapps.io
+  CONTAINERAPP_NAME: ctapp-demo-ui # 準備タスクで作成された API Container App 名 `ctapp-demo-api` をここに記載
+  API_BASE_URL: https://ctapp-demo-ui.wittysea-ef8aed64.koreacentral.azurecontainerapps.io
 
 jobs:
   build:
